@@ -58,11 +58,10 @@ fun loadSchedule(
     callback: (Map<String, List<Lesson>>) -> Unit
 ) {
 
-    val df: DateFormat = SimpleDateFormat("yyyyMMdd")
+    val df: DateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
     val dateUrl = df.format(date)
     runBlocking {
         withContext(Dispatchers.IO) {
-
             Log.d("loadSchedule", "https://urfu.ru/api/schedule/teacher/lessons/$id/${dateUrl}/")
             val response: HttpResponse = when (userType) {
                 UserType.TEACHER -> client.get(

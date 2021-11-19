@@ -33,56 +33,56 @@ enum class UserType {
     TEACHER, STUDENT
 }
 
+
 @Serializable
 data class SuggestionItem(val value: String, val data: Int)
 
 @Serializable
 data class Suggestions(val suggestions: List<SuggestionItem>)
 
-sealed class Lesson(
-    val timeStart: String,
-    val timeEnd: String,
-    val discipline: String,
-    val type: String,
-    val location: String,
-) {
-    override fun toString(): String {
-        return "timeStart='$timeStart', timeEnd='$timeEnd', discipline='$discipline', type='$type', location='$location'"
+data class SimpleTime(val hours: Int, val minutes: Int) {
+    companion object {
+        fun fromString(s: String): SimpleTime {
+            val (hours, minutes) = s.split(':').map { it.toInt() }
+            return SimpleTime(hours, minutes)
+        }
     }
+
+    override fun toString() = "$hours:$minutes"
 }
 
-class LessonForTeacher(
-    timeStart: String,
-    timeEnd: String,
-    discipline: String,
-    type: String,
-    location: String,
+sealed interface LessonTime
+data class SimpleInterval(val start: SimpleTime, val end: SimpleTime) : LessonTime
+data class FallbackLessonTime(val time: String) : LessonTime
+sealed interface Lesson {
+    val time: LessonTime
+    val discipline: String
+    val type: String
+    val location: String
+}
+
+data class LessonForTeacher(
+    override val time: LessonTime,
+    override val discipline: String,
+    override val type: String,
+    override val location: String,
     val group: String
-) :
-    Lesson(timeStart, timeEnd, discipline, type, location) {
-    override fun toString(): String {
-        return "LessonForTeacher(${super.toString()},group='$group')"
-    }
-}
+) : Lesson
 
-class LessonForStudent(
-    timeStart: String,
-    timeEnd: String,
-    discipline: String,
-    type: String,
-    location: String,
+data class LessonForStudent(
+    override val time: LessonTime,
+    override val discipline: String,
+    override val type: String,
+    override val location: String,
     val teacher: String
-) :
-    Lesson(timeStart, timeEnd, discipline, type, location) {
-    override fun toString(): String {
-        return "LessonForStudent(${super.toString()},teacher='$teacher')"
-    }
+) : Lesson {
+
 }
 
 fun scheduleParse(body: Element, userType: UserType): HashMap<String, MutableList<Lesson>> {
     val scheduleElements = body.select(Evaluator.Tag("tr"))
     val schedule = LinkedHashMap<String, MutableList<Lesson>>()
-    var date = "";
+    var date = ""
     for (e in scheduleElements) {
         if ("divide" in e.classNames()) {
             date = e.text().takeIf { it.isNotBlank() } ?: continue
@@ -90,40 +90,44 @@ fun scheduleParse(body: Element, userType: UserType): HashMap<String, MutableLis
         }
         if ("shedule-weekday-row" in e.classNames()) {
             if ("shedule-weekday-first-row" in e.classNames())
-                continue;
+                continue
             try {
-                var timeInterval = e.selectFirst(Evaluator.Class("shedule-weekday-time"))?.text()
+                val timeIntervalRaw = e.selectFirst(Evaluator.Class("shedule-weekday-time"))?.text()
                     ?: throw IllegalStateException("No shedule-weekday-time")
-                val (timeStart, timeEnd) = timeInterval.split(" - ")
+
+                val timeInterval = try {
+                    val (begin, end) = timeIntervalRaw.split(Regex("[^:\\d]+"))
+                        .map { SimpleTime.fromString(it) }
+                    SimpleInterval(begin, end)
+                } catch (e: Exception) {
+                    FallbackLessonTime(timeIntervalRaw)
+                }
                 val item = e.selectFirst(Evaluator.Class("shedule-weekday-item"))
                     ?: throw IllegalStateException("No shedule-weekday-item")
                 var discipline = item.child(0).text()
                 discipline = discipline.replace(Regex("^\\d\\.\\s+"), "")
                 val about = item.child(1)
-                val list = schedule[date]?:throw IllegalStateException("Lesson before date")
+                val list = schedule[date] ?: throw IllegalStateException("Lesson before date")
                 list += when (userType) {
                     UserType.TEACHER -> {
                         val info = about.children().toList()
                         when (info.size) {
                             1 -> LessonForTeacher(
-                                timeStart,
-                                timeEnd,
+                                timeInterval,
                                 discipline,
                                 info[0].text(),
                                 "",
                                 ""
                             )
                             2 -> LessonForTeacher(
-                                timeStart,
-                                timeEnd,
+                                timeInterval,
                                 discipline,
                                 info[0].text(),
                                 info[1].text(),
                                 ""
                             )
                             3 -> LessonForTeacher(
-                                timeStart,
-                                timeEnd,
+                                timeInterval,
                                 discipline,
                                 info[0].text(),
                                 info[1].text(),
@@ -136,12 +140,10 @@ fun scheduleParse(body: Element, userType: UserType): HashMap<String, MutableLis
                         val info = about.children().toList()
                         when (info.size) {
                             1 -> LessonForStudent(
-                                timeStart,
-                                timeEnd, discipline, info[0].text(), "", ""
+                                timeInterval, discipline, info[0].text(), "", ""
                             )
                             2 -> LessonForStudent(
-                                timeStart,
-                                timeEnd,
+                                timeInterval,
                                 discipline,
                                 info[0].text(),
                                 info[1].text(),
@@ -149,8 +151,7 @@ fun scheduleParse(body: Element, userType: UserType): HashMap<String, MutableLis
                             )
                             3 -> if (info[1].hasClass("cabinet")) {
                                 LessonForStudent(
-                                    timeStart,
-                                    timeEnd,
+                                    timeInterval,
                                     discipline,
                                     info[0].text(),
                                     info[1].text(),
@@ -158,8 +159,7 @@ fun scheduleParse(body: Element, userType: UserType): HashMap<String, MutableLis
                                 )
                             } else {
                                 LessonForStudent(
-                                    timeStart,
-                                    timeEnd,
+                                    timeInterval,
                                     discipline,
                                     info[0].text(),
                                     info[2].text(),
@@ -180,7 +180,8 @@ fun scheduleParse(body: Element, userType: UserType): HashMap<String, MutableLis
 }
 
 fun String.looksLikeAddress(): String? {
-    val addressRegex = Regex("(ул.?)?[а-яА-ЯёЁ]{4,}[а-яА-Я ёЁ]{5,}[,.]? \\d+")
+    val addressRegex =
+        Regex("(ул(\\.|ица)?)? [а-яА-ЯёЁ]{4,}[а-яА-Я ёЁ]{5,}[,.]?\\s*(д(ом|\\.)\\s*)?\\d+[а-яА-ЯёЁ]?")
     return addressRegex.find(this, 0)?.groups?.first()?.value
 }
 

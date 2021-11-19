@@ -1,4 +1,5 @@
-package com.example.ui.ui
+package com.github.igormich.urfuschedule.ui
+import android.annotation.SuppressLint
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.MaterialTheme.shapes
@@ -10,23 +11,18 @@ import androidx.compose.ui.graphics.Color
 
 val primaryOrange = Color(0xFFff9900)
 val primaryCharcoal = Color(0xFF2b2b2b)
-val accentAmber = Color(0xFFffe400)
-
-val textColorLight = Color(0xDCFFFFFF)
 val textColorDark = Color(0xFFf3f3f3)
 val gridLineColorLight = Color.Black
 val lightGrey = Color(0xFFf3f3f3)
 val lightGreyAlpha = Color(0xDCf3f3f3)
-val userInputtedNumberLight = Color(0xFF629749)
-val userInputtedNumberDark = Color(0xFF629749)
-val victoryColor = Color(0xFFffeb3b)
 
+@SuppressLint("ConflictingOnColor")
 private val LightColorPalette = lightColors(
     primary = primaryOrange,
-    secondary = Color.DarkGray,
+    secondary = primaryOrange,
     surface = lightGrey,
     primaryVariant = gridLineColorLight,
-    onPrimary = Color.DarkGray,
+    onPrimary = Color.White,
     onSurface = Color.DarkGray,
 )
 

@@ -1,6 +1,7 @@
 package com.github.igormich.urfuschedule.ui
 
 import androidx.appcompat.app.AppCompatActivity
+import com.github.igormich.urfuschedule.strings.STRINGS
 import com.google.android.material.datepicker.*
 import java.util.*
 
@@ -31,7 +32,7 @@ fun showDatePicker(
     validators.add(DateValidatorPointBackward.before(maxDate))
     constraintsBuilder.setValidator(CompositeDateValidator.allOf(validators))
     constraintsBuilder.setOpenAt(date.time)
-    val picker = MaterialDatePicker.Builder.datePicker().setTitleText("Выберите дату")
+    val picker = MaterialDatePicker.Builder.datePicker().setTitleText(STRINGS.SELECT_DATE)
         .setSelection(date.time)
         .setCalendarConstraints(constraintsBuilder.build()).build()
     picker.show(activity.supportFragmentManager, picker.toString())
