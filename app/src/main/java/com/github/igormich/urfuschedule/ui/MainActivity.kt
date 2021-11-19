@@ -28,6 +28,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,6 +37,7 @@ import androidx.navigation.compose.rememberNavController
 
 class MainActivity : AppCompatActivity() {
 
+    @ExperimentalFoundationApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -47,9 +49,9 @@ class MainActivity : AppCompatActivity() {
         val pref = getPreferences(Context.MODE_PRIVATE)
         return pref.getInt("id", -1) == -1
     }
+    @ExperimentalFoundationApi
     @Composable
     fun Init() {
-
         val startDestination = if (isNewUser()) {
             "start"
         } else {
